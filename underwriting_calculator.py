@@ -1,38 +1,46 @@
-
 import streamlit as st
 
-# Title
-st.title("Apartment Underwriting Calculator")
+st.set_page_config(page_title="Commercial Underwriting Calculator", layout="centered")
 
-# Input sliders and fields
-num_units = st.number_input("Number of Units", min_value=1, value=40)
-market_rent = st.number_input("Market Rent ($/month)", min_value=0.0, value=2000.0)
-other_income_pct = st.number_input("Other Income (%)", min_value=0.0, value=3.25)
-occupancy_pct = st.slider("Occupancy (%)", min_value=0, max_value=100, value=93)
-expense_pct = st.slider("Expenses (% of EGI)", min_value=0, max_value=100, value=40)
-cap_rate_pct = st.slider("Cap Rate (%)", min_value=1, max_value=15, value=6)
+st.title("🏢 Commercial Underwriting Calculator")
 
-# Calculation function
-def calculate_underwriting(num_units, market_rent, other_income_pct, occupancy_pct, expense_pct, cap_rate_pct):
-    gross_rent = num_units * market_rent * 12
-    other_income = gross_rent * (other_income_pct / 100)
-    effective_income = (gross_rent + other_income) * (occupancy_pct / 100)
-    expenses = effective_income * (expense_pct / 100)
-    noi = effective_income - expenses
-    cap_rate = cap_rate_pct / 100
-    offer_price = noi / cap_rate if cap_rate > 0 else 0
-    return gross_rent, other_income, effective_income, expenses, noi, offer_price
+# --- INPUTS ---
+st.subheader("Enter Deal Info")
 
-# Run calculation
-gross_rent, other_income, effective_income, expenses, noi, offer_price = calculate_underwriting(
-    num_units, market_rent, other_income_pct, occupancy_pct, expense_pct, cap_rate_pct
-)
+noi = st.number_input("Net Operating Income (NOI) ($)", min_value=0.0, value=100000.0, step=1000.0)
+cap_rate = st.number_input("Your Target Cap Rate (%)", min_value=1.0, value=6.0, step=0.1)
 
-# Display results
-st.subheader("Results")
-st.write(f"**Gross Potential Rent:** ${gross_rent:,.2f}")
-st.write(f"**Other Income:** ${other_income:,.2f}")
-st.write(f"**Effective Gross Income:** ${effective_income:,.2f}")
-st.write(f"**Expenses:** ${expenses:,.2f}")
-st.write(f"**Net Operating Income (NOI):** ${noi:,.2f}")
-st.success(f"**Suggested Offer Price:** ${offer_price:,.2f}")
+lease_term = st.number_input("Remaining Lease Term (Years)", min_value=0.0, value=10.0)
+rent_bumps = st.number_input("Annual Rent Bumps (%) [Optional]", min_value=0.0, value=0.0)
+
+tenant_rating = st.selectbox("Tenant Credit Rating", ["AAA", "A", "BBB", "Unrated"])
+property_class = st.selectbox("Property Class / Location Score", ["A", "B", "C"])
+
+# --- CALCULATION ---
+base_offer = noi / (cap_rate / 100)
+
+# Risk-based adjustment
+discount = 0
+if tenant_rating == "BBB":
+    discount += 0.03
+elif tenant_rating == "Unrated":
+    discount += 0.05
+
+if property_class == "B":
+    discount += 0.02
+elif property_class == "C":
+    discount += 0.04
+
+adjusted_offer = base_offer * (1 - discount)
+
+# --- RESULTS ---
+st.divider()
+st.subheader("📊 Results")
+
+st.markdown(f"**Base Offer (NOI / Cap Rate):** `${base_offer:,.2f}`")
+
+if discount > 0:
+    st.markdown(f"**Risk Adjusted Discount:** `{discount * 100:.1f}%`")
+    st.success(f"**Final Suggested Offer Price:** `${adjusted_offer:,.2f}`")
+else:
+    st.success(f"**Suggested Offer Price:** `${base_offer:,.2f}`")
